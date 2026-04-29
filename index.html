@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Gradient Ribbon Studio</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;color:#ccc;display:flex;height:100vh;overflow:hidden}
+#sidebar{width:320px;min-width:320px;background:#111;border-right:1px solid #222;overflow-y:auto;display:flex;flex-direction:column;z-index:10}
+#sidebar::-webkit-scrollbar{width:6px}
+#sidebar::-webkit-scrollbar-track{background:#111}
+#sidebar::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+.sidebar-header{padding:16px 16px 12px;border-bottom:1px solid #222;position:sticky;top:0;background:#111;z-index:2}
+.sidebar-header h1{font-size:14px;font-weight:600;color:#fff;letter-spacing:.5px;text-transform:uppercase}
+.sidebar-header p{font-size:11px;color:#666;margin-top:4px}
+.btn-row{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.btn{padding:6px 12px;border:1px solid #333;background:#1a1a1a;color:#ccc;font-size:11px;border-radius:4px;cursor:pointer;transition:all .15s;font-family:inherit}
+.btn:hover{background:#252525;border-color:#444;color:#fff}
+.btn-primary{background:#2563eb;border-color:#3b82f6;color:#fff}
+.btn-primary:hover{background:#1d4ed8}
+.btn-danger{border-color:#7f1d1d;color:#f87171}
+.btn-danger:hover{background:#1c0a0a}
+.section{border-bottom:1px solid #1a1a1a}
+.section-header{padding:10px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#888}
+.section-header:hover{color:#bbb}
+.section-header .arrow{transition:transform .2s;font-size:10px}
+.section-header.collapsed .arrow{transform:rotate(-90deg)}
+.section-body{padding:4px 16px 12px}
+.section-body.hidden{display:none}
+.control{margin-bottom:8px}
+.control-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;font-size:11px;color:#888}
+.control-label span:last-child{color:#4a9eff;font-family:'SF Mono','Fira Code',monospace;font-size:10px}
+input[type="range"]{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:#2a2a2a;outline:none;cursor:pointer}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#4a9eff;cursor:pointer;border:2px solid #111}
+.color-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.color-row input[type="color"]{-webkit-appearance:none;width:32px;height:24px;border:1px solid #333;border-radius:4px;cursor:pointer;background:none;padding:0}
+.color-row input[type="color"]::-webkit-color-swatch-wrapper{padding:1px}
+.color-row input[type="color"]::-webkit-color-swatch{border:none;border-radius:2px}
+.color-row label{font-size:11px;color:#888;flex:1}
+.color-row .remove-color{background:none;border:none;color:#555;cursor:pointer;font-size:16px;padding:0 4px}
+.color-row .remove-color:hover{color:#f87171}
+.preset-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+.preset-btn{height:40px;border-radius:6px;border:2px solid transparent;cursor:pointer;transition:border-color .15s,transform .1s}
+.preset-btn:hover{border-color:#4a9eff;transform:scale(1.05)}
+.shape-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+.shape-btn{padding:8px 4px;border-radius:6px;border:2px solid #333;cursor:pointer;background:#1a1a1a;color:#aaa;font-size:10px;font-family:inherit;text-align:center;transition:all .15s}
+.shape-btn:hover{border-color:#4a9eff;color:#fff}
+.shape-btn.active{border-color:#4a9eff;background:#1a2a4a;color:#fff}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.toggle-row label{font-size:11px;color:#888}
+.toggle{width:36px;height:20px;border-radius:10px;background:#333;cursor:pointer;position:relative;transition:background .2s;border:none}
+.toggle.active{background:#2563eb}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s}
+.toggle.active::after{transform:translateX(16px)}
+#canvas-wrap{flex:1;position:relative;overflow:hidden;background:#ffffff;cursor:grab}
+#canvas-wrap:active{cursor:grabbing}
+canvas{width:100%;height:100%;display:block}
+.hint{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.5);color:#fff;padding:6px 16px;border-radius:20px;font-size:11px;pointer-events:none;opacity:0.7;white-space:nowrap}
+.export-modal{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.7);align-items:center;justify-content:center}
+.export-modal.open{display:flex}
+.export-content{background:#1a1a1a;border:1px solid #333;border-radius:8px;width:700px;max-width:90vw;max-height:80vh;display:flex;flex-direction:column}
+.export-header{padding:16px 20px;border-bottom:1px solid #222;display:flex;justify-content:space-between;align-items:center}
+.export-header h2{font-size:14px;color:#fff}
+.export-close{background:none;border:none;color:#888;font-size:20px;cursor:pointer}
+.export-close:hover{color:#fff}
+.export-body{padding:16px 20px;overflow-y:auto;flex:1}
+.export-body textarea{width:100%;height:400px;background:#111;border:1px solid #333;color:#9cdcfe;font-family:'SF Mono','Fira Code',monospace;font-size:11px;padding:12px;border-radius:4px;resize:vertical;outline:none}
+.export-body textarea:focus{border-color:#4a9eff}
+.export-footer{padding:12px 20px;border-top:1px solid #222;display:flex;justify-content:flex-end;gap:8px}
+.section-note{font-size:10px;color:#555;margin-bottom:8px;line-height:1.4}
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <div class="sidebar-header">
+    <h1>3D Ribbon Studio</h1>
+    <p>Drag to orbit / scroll to zoom</p>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="openExport()">Export Code</button>
+      <button class="btn" onclick="randomize()">Randomize</button>
+      <button class="btn btn-danger" onclick="resetAll()">Reset</button>
+    </div>
+  </div>
+  <div class="sidebar-scroll" style="flex:1;overflow-y:auto;padding-bottom:20px">
+
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)"><span>Gradient Presets</span><span class="arrow">&#9660;</span></div>
+      <div class="section-body"><div class="preset-grid" id="presetGrid"></div></div>
+    </div>
+
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)"><span>Ribbon Shape</span><span class="arrow">&#9660;</span></div>
+      <div class="section-body">
+        <div class="shape-grid" id="shapeGrid"></div>
+        <div style="margin-top:10px">
+          <div class="control"><div class="control-label"><span>Width</span><span id="v_ribbonWidth">3.00</span></div><input type="range" min="0.5" max="8" step="0.1" value="3" oninput="setRibbon('ribbonWidth',this.value)"></div>
+          <div class="control"><div class="control-label"><span>Twist</span><span id="v_ribbonTwist">1.50</span></div><input type="range" min="0" max="8" step="0.1" value="1.5" oninput="setRibbon('ribbonTwist',this.value)"></div>
+          <div class="control"><div class="control-label"><span>Curve Scale</span><span id="v_curveScale">5.00</span></div><input type="range" min="1" max="12" step="0.1" value="5" oninput="setRibbon('curveScale',this.value)"></div>
+          <div class="control"><div class="control-label"><span>Segments</span><span id="v_segments">200</span></div><input type="range" min="40" max="500" step="10" value="200" oninput="setRibbon('segments',this.value)"></div>
+          <div class="control"><div class="control-label"><span>Frequency 1</span><span id="v_freq1">2.00</span></div><input type="range" min="0.5" max="8" step="0.1" value="2" oninput="setRibbon('freq1',this.value)"></div>
+          <div class="control"><div class="control-label"><span>Frequency 2</span><span id="v_freq2">3.00</span></div><input type="range" min="0.5" max="8" step="0.1" value="3" oninput="setRibbon('freq2',this.value)"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)"><span>Depth of Field</span><span class="arrow">&#9660;</span></div>
+      <div class="section-body">
+        <div class="toggle-row"><label>Enable DoF</label><button class="toggle active" id="dofToggle" onclick="toggleFlag(this,'dofEnabled')"></button></div>
+        <div class="section-note">Focus Distance is in world units. The ribbon sits roughly 10-25 units from camera. Slide to pull focus across the ribbon -- one end sharp, the other melting away.</div>
+        <div class="control"><div class="control-label"><span>Focus Distance</span><span id="v_focusDist">18.00</span></div><input type="range" min="2" max="50" step="0.25" value="18" oninput="setParam('focusDist',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Aperture (shallow DoF)</span><span id="v_aperture">2.50</span></div><input type="range" min="0.1" max="12" step="0.1" value="2.5" oninput="setParam('aperture',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Max Blur (px)</span><span id="v_maxBlur">30.00</span></div><input type="range" min="1" max="60" step="1" value="30" oninput="setParam('maxBlur',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Blur Quality</span><span id="v_dofQuality">3</span></div><input type="range" min="1" max="5" step="1" value="3" oninput="setParam('dofQuality',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Near Bias</span><span id="v_nearBias">1.00</span></div><input type="range" min="0" max="3" step="0.05" value="1" oninput="setParam('nearBias',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Far Bias</span><span id="v_farBias">1.00</span></div><input type="range" min="0" max="3" step="0.05" value="1" oninput="setParam('farBias',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Bokeh Highlight</span><span id="v_bokehBright">0.40</span></div><input type="range" min="0" max="2" step="0.01" value="0.4" oninput="setParam('bokehBright',this.value)"></div>
+        <div class="toggle-row"><label>Show Focus Zone (debug)</label><button class="toggle" id="debugToggle" onclick="toggleFlag(this,'debugFocus')"></button></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)"><span>Edge Blur / Tilt</span><span class="arrow">&#9660;</span></div>
+      <div class="section-body">
+        <div class="section-note">Screen-space blur from the edges inward. Offset the clear zone with tilt for a miniature/tilt-shift feel.</div>
+        <div class="control"><div class="control-label"><span>Edge Blur Amount</span><span id="v_edgeBlur">0.00</span></div><input type="range" min="0" max="40" step="0.5" value="0" oninput="setParam('edgeBlur',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Edge Start Radius</span><span id="v_edgeRadius">0.60</span></div><input type="range" min="0.1" max="1.5" step="0.01" value="0.6" oninput="setParam('edgeRadius',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Edge Softness</span><span id="v_edgeSoftness">0.50</span></div><input type="range" min="0.05" max="2" step="0.01" value="0.5" oninput="setParam('edgeSoftness',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Tilt Offset X</span><span id="v_tiltX">0.00</span></div><input type="range" min="-1" max="1" step="0.01" value="0" oninput="setParam('tiltX',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Tilt Offset Y</span><span id="v_tiltY">0.00</span></div><input type="range" min="-1" max="1" step="0.01" value="0" oninput="setParam('tiltY',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Shape (Round / Square)</span><span id="v_edgeShape">0.50</span></div><input type="range" min="0" max="1" step="0.01" value="0.5" oninput="setParam('edgeShape',this.value)"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)"><span>Colors</span><span class="arrow">&#9660;</span></div>
+      <div class="section-body">
+        <div id="colorControls"></div>
+        <button class="btn" onclick="addColor()" style="margin-top:6px;width:100%">+ Add Color</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)"><span>Animation</span><span class="arrow">&#9660;</span></div>
+      <div class="section-body">
+        <div class="toggle-row"><label>Animate Shader</label><button class="toggle active" id="animToggle" onclick="toggleFlag(this,'animating')"></button></div>
+        <div class="toggle-row"><label>Auto-Rotate</label><button class="toggle active" id="rotateToggle" onclick="toggleFlag(this,'autoRotate')"></button></div>
+        <div class="control"><div class="control-label"><span>Shader Speed</span><span id="v_speed">0.40</span></div><input type="range" min="0" max="2" step="0.01" value="0.4" oninput="setParam('speed',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Time Offset</span><span id="v_timeOffset">0.00</span></div><input type="range" min="0" max="100" step="0.1" value="0" oninput="setParam('timeOffset',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Rotate Speed</span><span id="v_autoRotateSpeed">0.30</span></div><input type="range" min="0.05" max="2" step="0.01" value="0.3" oninput="setParam('autoRotateSpeed',this.value)"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)"><span>Noise / Pattern</span><span class="arrow">&#9660;</span></div>
+      <div class="section-body">
+        <div class="control"><div class="control-label"><span>Seed</span><span id="v_seed">0.00</span></div><input type="range" min="0" max="100" step="0.1" value="0" oninput="setParam('seed',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Noise Scale</span><span id="v_noiseScale">1.20</span></div><input type="range" min="0.1" max="5" step="0.01" value="1.2" oninput="setParam('noiseScale',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Noise Intensity</span><span id="v_noiseIntensity">0.70</span></div><input type="range" min="0" max="2" step="0.01" value="0.7" oninput="setParam('noiseIntensity',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Undulation X</span><span id="v_undulationX">1.00</span></div><input type="range" min="0" max="5" step="0.01" value="1" oninput="setParam('undulationX',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Undulation Y</span><span id="v_undulationY">1.00</span></div><input type="range" min="0" max="5" step="0.01" value="1" oninput="setParam('undulationY',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Complexity</span><span id="v_complexity">3</span></div><input type="range" min="1" max="8" step="1" value="3" oninput="setParam('complexity',this.value)"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)"><span>Distortion / Warp</span><span class="arrow">&#9660;</span></div>
+      <div class="section-body">
+        <div class="control"><div class="control-label"><span>Shader Twist</span><span id="v_shaderTwist">0.30</span></div><input type="range" min="0" max="3" step="0.01" value="0.3" oninput="setParam('shaderTwist',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Twist Freq</span><span id="v_twistFreq">1.00</span></div><input type="range" min="0.1" max="5" step="0.01" value="1" oninput="setParam('twistFreq',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Warp X</span><span id="v_warpX">0.20</span></div><input type="range" min="0" max="2" step="0.01" value="0.2" oninput="setParam('warpX',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Warp Y</span><span id="v_warpY">0.20</span></div><input type="range" min="0" max="2" step="0.01" value="0.2" oninput="setParam('warpY',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Displacement</span><span id="v_displacement">0.15</span></div><input type="range" min="0" max="1" step="0.01" value="0.15" oninput="setParam('displacement',this.value)"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)"><span>Lighting / Depth</span><span class="arrow">&#9660;</span></div>
+      <div class="section-body">
+        <div class="control"><div class="control-label"><span>Light Intensity</span><span id="v_lightIntensity">0.35</span></div><input type="range" min="0" max="1" step="0.01" value="0.35" oninput="setParam('lightIntensity',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Ambient</span><span id="v_ambient">0.70</span></div><input type="range" min="0.2" max="1" step="0.01" value="0.7" oninput="setParam('ambient',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Fresnel</span><span id="v_fresnel">0.30</span></div><input type="range" min="0" max="2" step="0.01" value="0.3" oninput="setParam('fresnel',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Specular</span><span id="v_specular">0.20</span></div><input type="range" min="0" max="1" step="0.01" value="0.2" oninput="setParam('specular',this.value)"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)"><span>Appearance</span><span class="arrow">&#9660;</span></div>
+      <div class="section-body">
+        <div class="control"><div class="control-label"><span>Brightness</span><span id="v_brightness">1.00</span></div><input type="range" min="0.2" max="2" step="0.01" value="1" oninput="setParam('brightness',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Contrast</span><span id="v_contrast">1.00</span></div><input type="range" min="0.5" max="2" step="0.01" value="1" oninput="setParam('contrast',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Saturation</span><span id="v_saturation">1.00</span></div><input type="range" min="0" max="2" step="0.01" value="1" oninput="setParam('saturation',this.value)"></div>
+        <div class="control"><div class="control-label"><span>Glow</span><span id="v_glow">0.15</span></div><input type="range" min="0" max="1" step="0.01" value="0.15" oninput="setParam('glow',this.value)"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="canvas-wrap">
+  <canvas id="glcanvas"></canvas>
+  <div class="hint">Left-drag to orbit &#183; Scroll to zoom &#183; Right-drag to pan</div>
+</div>
+
+<div class="export-modal" id="exportModal">
+  <div class="export-content">
+    <div class="export-header"><h2>Export Standalone HTML</h2><button class="export-close" onclick="closeExport()">&times;</button></div>
+    <div class="export-body"><textarea id="exportCode" readonly></textarea></div>
+    <div class="export-footer"><button class="btn" onclick="closeExport()">Close</button><button class="btn btn-primary" onclick="copyExport()">Copy to Clipboard</button></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// === STATE ===
+const params = {
+  speed:.4,timeOffset:0,seed:0,noiseScale:1.2,noiseIntensity:.7,
+  undulationX:1,undulationY:1,complexity:3,shaderTwist:.3,twistFreq:1,
+  warpX:.2,warpY:.2,displacement:.15,brightness:1,contrast:1,
+  saturation:1,glow:.15,lightIntensity:.35,ambient:.7,fresnel:.3,specular:.2,
+  autoRotateSpeed:.3,
+  focusDist:18,aperture:2.5,maxBlur:30,dofQuality:3,
+  nearBias:1,farBias:1,bokehBright:.4,
+  edgeBlur:0,edgeRadius:.6,edgeSoftness:.5,tiltX:0,tiltY:0,edgeShape:.5
+};
+const ribbon={shape:'wave',ribbonWidth:3,ribbonTwist:1.5,curveScale:5,segments:200,freq1:2,freq2:3};
+let colors=['#ff6b35','#f7c948','#e0479e','#8b5cf6','#06b6d4'];
+let animating=true,autoRotate=true,needsRebuild=true,dofEnabled=true,debugFocus=false;
+
+const wrap=document.getElementById('canvas-wrap');
+const canvas=document.getElementById('glcanvas');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setClearColor(0xffffff,1);
+
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(45,1,0.1,200);
+
+let rtWidth=1,rtHeight=1;
+const depthTex=new THREE.DepthTexture();
+depthTex.type=THREE.UnsignedIntType;
+let renderTarget=new THREE.WebGLRenderTarget(1,1,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,depthTexture:depthTex});
+
+const postScene=new THREE.Scene();
+const postCamera=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+
+const dofVS=`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.0,1.0);}`;
+
+const dofFS=`
+precision highp float;
+varying vec2 vUv;
+uniform sampler2D tColor;
+uniform sampler2D tDepth;
+uniform float uFocusDist;
+uniform float uAperture;
+uniform float uMaxBlur;
+uniform int uQuality;
+uniform float uNearBias;
+uniform float uFarBias;
+uniform float uBokehBright;
+uniform float uEdgeBlur;
+uniform float uEdgeRadius;
+uniform float uEdgeSoftness;
+uniform float uTiltX;
+uniform float uTiltY;
+uniform float uEdgeShape;
+uniform float uNear;
+uniform float uFar;
+uniform vec2 uRes;
+uniform float uDofOn;
+uniform float uDebug;
+
+float linearDepth(float d){
+  float z=d*2.0-1.0;
+  return (2.0*uNear*uFar)/(uFar+uNear-z*(uFar-uNear));
+}
+
+void main(){
+  vec4 center=texture2D(tColor,vUv);
+  float rawD=texture2D(tDepth,vUv).x;
+  float ld=linearDepth(rawD);
+
+  // --- Circle of confusion from depth ---
+  float cocDepth=0.0;
+  if(uDofOn>0.5){
+    float delta=ld-uFocusDist;
+    if(delta<0.0){
+      cocDepth=(-delta/uFocusDist)*uAperture*uNearBias;
+    } else {
+      cocDepth=(delta/uFocusDist)*uAperture*uFarBias;
+    }
+    cocDepth=min(cocDepth,1.0)*uMaxBlur;
+  }
+
+  // --- Circle of confusion from screen edges ---
+  float cocEdge=0.0;
+  if(uEdgeBlur>0.01){
+    vec2 ec=(vUv-0.5)*2.0-vec2(uTiltX,uTiltY);
+    float rd=length(ec);
+    float sd=max(abs(ec.x),abs(ec.y));
+    float ed=mix(rd,sd,uEdgeShape);
+    cocEdge=smoothstep(uEdgeRadius,uEdgeRadius+uEdgeSoftness,ed)*uEdgeBlur;
+  }
+
+  float coc=max(cocDepth,cocEdge);
+
+  // --- Debug: visualise focus zone ---
+  if(uDebug>0.5){
+    float dVis=cocDepth/max(uMaxBlur,1.0);
+    gl_FragColor=vec4(dVis,1.0-dVis*2.0,1.0-dVis,1.0);
+    gl_FragColor.rgb=mix(center.rgb,gl_FragColor.rgb,0.6);
+    return;
+  }
+
+  if(coc<0.5){
+    gl_FragColor=center;
+    return;
+  }
+
+  // --- Golden-angle spiral disc sampling ---
+  // Quality 1=16, 2=32, 3=48, 4=71, 5=91
+  int totalSamples;
+  if(uQuality<=1) totalSamples=16;
+  else if(uQuality<=2) totalSamples=32;
+  else if(uQuality<=3) totalSamples=48;
+  else if(uQuality<=4) totalSamples=71;
+  else totalSamples=91;
+
+  float goldenAngle=2.39996323;
+  vec2 texel=1.0/uRes;
+  vec3 col=vec3(0.0);
+  float totalW=0.0;
+
+  for(int i=0;i<91;i++){
+    if(i>=totalSamples) break;
+    float fi=float(i);
+    float r=sqrt((fi+0.5)/float(totalSamples));
+    float theta=fi*goldenAngle;
+    vec2 offset=vec2(cos(theta),sin(theta))*r*coc*texel;
+    vec2 suv=vUv+offset;
+
+    // Read depth at sample and compute its own coc to prevent sharp foreground leaking
+    float sDepth=linearDepth(texture2D(tDepth,suv).x);
+    float sCoc=0.0;
+    if(uDofOn>0.5){
+      float sd2=sDepth-uFocusDist;
+      if(sd2<0.0) sCoc=(-sd2/uFocusDist)*uAperture*uNearBias;
+      else sCoc=(sd2/uFocusDist)*uAperture*uFarBias;
+      sCoc=min(sCoc,1.0)*uMaxBlur;
+    }
+    sCoc=max(sCoc,cocEdge);
+
+    // Only spread blur from a sample if that sample itself is also blurry
+    // (prevents sharp foreground objects bleeding into bokeh)
+    float spreadOk=step(r*coc-0.5, sCoc);
+
+    vec4 samp=texture2D(tColor,suv);
+    float lum=dot(samp.rgb,vec3(0.299,0.587,0.114));
+    float w=(1.0+lum*uBokehBright*3.0)*mix(0.15,1.0,spreadOk);
+    col+=samp.rgb*w;
+    totalW+=w;
+  }
+  col/=totalW;
+
+  gl_FragColor=vec4(col,1.0);
+}`;
+
+const dofU={
+  tColor:{value:null},tDepth:{value:null},
+  uFocusDist:{value:18},uAperture:{value:2.5},uMaxBlur:{value:30},uQuality:{value:3},
+  uNearBias:{value:1},uFarBias:{value:1},uBokehBright:{value:.4},
+  uEdgeBlur:{value:0},uEdgeRadius:{value:.6},uEdgeSoftness:{value:.5},
+  uTiltX:{value:0},uTiltY:{value:0},uEdgeShape:{value:.5},
+  uNear:{value:.1},uFar:{value:200},uRes:{value:new THREE.Vector2()},
+  uDofOn:{value:1},uDebug:{value:0}
+};
+const postMat=new THREE.ShaderMaterial({uniforms:dofU,vertexShader:dofVS,fragmentShader:dofFS,depthWrite:false});
+postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),postMat));
+
+let orbitTheta=0.5,orbitPhi=1.2,orbitRadius=18;
+let panOffset=new THREE.Vector3(0,0,0);
+let isDragging=false,isRightDrag=false,prevMouse={x:0,y:0};
+
+function updateCamera(){
+  const x=orbitRadius*Math.sin(orbitPhi)*Math.cos(orbitTheta);
+  const y=orbitRadius*Math.cos(orbitPhi);
+  const z=orbitRadius*Math.sin(orbitPhi)*Math.sin(orbitTheta);
+  camera.position.set(x+panOffset.x,y+panOffset.y,z+panOffset.z);
+  camera.lookAt(panOffset);
+}
+function resize(){
+  const w=wrap.clientWidth,h=wrap.clientHeight,dpr=Math.min(window.devicePixelRatio,2);
+  renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();
+  rtWidth=Math.floor(w*dpr);rtHeight=Math.floor(h*dpr);
+  renderTarget.setSize(rtWidth,rtHeight);dofU.uRes.value.set(rtWidth,rtHeight);
+}
+window.addEventListener('resize',resize);resize();updateCamera();
+
+canvas.addEventListener('mousedown',e=>{isDragging=true;isRightDrag=e.button===2;prevMouse={x:e.clientX,y:e.clientY};});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+window.addEventListener('mouseup',()=>isDragging=false);
+window.addEventListener('mousemove',e=>{
+  if(!isDragging)return;const dx=e.clientX-prevMouse.x,dy=e.clientY-prevMouse.y;
+  if(isRightDrag){const r=new THREE.Vector3();camera.getWorldDirection(r);const u=new THREE.Vector3(0,1,0);r.crossVectors(u,r).normalize();panOffset.add(r.multiplyScalar(-dx*.02));panOffset.y+=dy*.02;}
+  else{orbitTheta-=dx*.005;orbitPhi-=dy*.005;orbitPhi=Math.max(.1,Math.min(Math.PI-.1,orbitPhi));}
+  prevMouse={x:e.clientX,y:e.clientY};updateCamera();
+});
+canvas.addEventListener('wheel',e=>{e.preventDefault();orbitRadius+=e.deltaY*.02;orbitRadius=Math.max(3,Math.min(60,orbitRadius));updateCamera();},{passive:false});
+let touchDist0=null;
+canvas.addEventListener('touchstart',e=>{if(e.touches.length===1){isDragging=true;isRightDrag=false;prevMouse={x:e.touches[0].clientX,y:e.touches[0].clientY};}if(e.touches.length===2){const dx=e.touches[1].clientX-e.touches[0].clientX,dy=e.touches[1].clientY-e.touches[0].clientY;touchDist0=Math.sqrt(dx*dx+dy*dy);}},{passive:true});
+canvas.addEventListener('touchmove',e=>{if(e.touches.length===1&&isDragging){const t=e.touches[0],dx=t.clientX-prevMouse.x,dy=t.clientY-prevMouse.y;orbitTheta-=dx*.005;orbitPhi-=dy*.005;orbitPhi=Math.max(.1,Math.min(Math.PI-.1,orbitPhi));prevMouse={x:t.clientX,y:t.clientY};updateCamera();}if(e.touches.length===2&&touchDist0){const dx=e.touches[1].clientX-e.touches[0].clientX,dy=e.touches[1].clientY-e.touches[0].clientY;const d=Math.sqrt(dx*dx+dy*dy);orbitRadius*=touchDist0/d;orbitRadius=Math.max(3,Math.min(60,orbitRadius));touchDist0=d;updateCamera();}},{passive:true});
+canvas.addEventListener('touchend',()=>{isDragging=false;touchDist0=null;});
+
+// === RIBBON SHADER ===
+const vertShader=`
+varying vec2 vUv;varying vec3 vNormal;varying vec3 vWorldPos;varying vec3 vViewDir;
+void main(){vUv=uv;vNormal=normalize(normalMatrix*normal);vec4 wp=modelMatrix*vec4(position,1.0);vWorldPos=wp.xyz;vViewDir=normalize(cameraPosition-wp.xyz);gl_Position=projectionMatrix*viewMatrix*wp;}`;
+const fragShader=`
+precision highp float;
+varying vec2 vUv;varying vec3 vNormal;varying vec3 vWorldPos;varying vec3 vViewDir;
+uniform float uTime,uSeed,uNoiseScale,uNoiseIntensity,uUndulationX,uUndulationY,uComplexity;
+uniform float uShaderTwist,uTwistFreq,uWarpX,uWarpY,uDisplacement;
+uniform float uBrightness,uContrast,uSaturation,uGlow,uLightIntensity,uAmbient,uFresnel,uSpecular;
+uniform vec3 uColors[8];uniform int uColorCount;
+vec3 mod289(vec3 x){return x-floor(x*(1./289.))*289.;}
+vec4 mod289(vec4 x){return x-floor(x*(1./289.))*289.;}
+vec4 permute(vec4 x){return mod289(((x*34.)+1.)*x);}
+vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-.85373472095314*r;}
+float snoise(vec3 v){const vec2 C=vec2(1./6.,1./3.);const vec4 D=vec4(0.,.5,1.,2.);vec3 i=floor(v+dot(v,C.yyy));vec3 x0=v-i+dot(i,C.xxx);vec3 g=step(x0.yzx,x0.xyz);vec3 l=1.-g;vec3 i1=min(g,l.zxy);vec3 i2=max(g,l.zxy);vec3 x1=x0-i1+C.xxx;vec3 x2=x0-i2+C.yyy;vec3 x3=x0-D.yyy;i=mod289(i);vec4 p=permute(permute(permute(i.z+vec4(0.,i1.z,i2.z,1.))+i.y+vec4(0.,i1.y,i2.y,1.))+i.x+vec4(0.,i1.x,i2.x,1.));float n_=.142857142857;vec3 ns=n_*D.wyz-D.xzx;vec4 j=p-49.*floor(p*ns.z*ns.z);vec4 x_=floor(j*ns.z);vec4 y_=floor(j-7.*x_);vec4 x=x_*ns.x+ns.yyyy;vec4 y=y_*ns.x+ns.yyyy;vec4 h=1.-abs(x)-abs(y);vec4 b0=vec4(x.xy,y.xy);vec4 b1=vec4(x.zw,y.zw);vec4 s0=floor(b0)*2.+1.;vec4 s1=floor(b1)*2.+1.;vec4 sh=-step(h,vec4(0.));vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy;vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;vec3 p0=vec3(a0.xy,h.x);vec3 p1=vec3(a0.zw,h.y);vec3 p2=vec3(a1.xy,h.z);vec3 p3=vec3(a1.zw,h.w);vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));p0*=norm.x;p1*=norm.y;p2*=norm.z;p3*=norm.w;vec4 m=max(.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.);m=m*m;return 42.*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));}
+float fbm(vec3 p,float oct){float v=0.,a=.5,f=1.;for(float i=0.;i<8.;i++){if(i>=oct)break;v+=a*snoise(p*f);f*=2.;a*=.5;}return v;}
+void main(){
+  vec2 uv=vUv;vec2 p=uv*2.-1.;float t=uTime;
+  float w1=snoise(vec3(p*uNoiseScale*.7+uSeed,t*.3));float w2=snoise(vec3(p*uNoiseScale*.7+uSeed+100.,t*.3+50.));
+  p.x+=w1*uWarpX;p.y+=w2*uWarpY;
+  float ta=uShaderTwist*sin(p.y*uTwistFreq+t*.5);float tc=cos(ta),ts=sin(ta);p=vec2(p.x*tc-p.y*ts,p.x*ts+p.y*tc);
+  float dn=snoise(vec3(p*2.+uSeed+200.,t*.4));p+=dn*uDisplacement;
+  float n1=fbm(vec3(p*uNoiseScale*uUndulationX,t*.4+uSeed),uComplexity);float n2=fbm(vec3(p*uNoiseScale*uUndulationY+50.,t*.35+uSeed+10.),uComplexity);float n3=fbm(vec3(p*uNoiseScale*.8+100.,t*.3+uSeed+20.),uComplexity);
+  n1*=uNoiseIntensity;n2*=uNoiseIntensity;n3*=uNoiseIntensity;
+  vec3 col=uColors[0];
+  if(uColorCount>=2){float idx=(n1+n2*.5+.75)*float(uColorCount-1);idx=clamp(idx,0.,float(uColorCount-1));int i0=int(floor(idx));int i1=i0+1;float fr=fract(idx);fr=fr*fr*(3.-2.*fr);vec3 c0=uColors[0],c1=uColors[0];for(int k=0;k<8;k++){if(k==i0)c0=uColors[k];if(k==i1)c1=uColors[k];}col=mix(c0,c1,fr);}
+  col*=(.7+(.5+n3*.5)*.6);col+=col*smoothstep(-.2,.8,n1+n2)*uGlow;
+  vec3 N=normalize(vNormal);if(!gl_FrontFacing)N=-N;
+  vec3 ld=normalize(vec3(1.,1.2,.8));float diff=max(dot(N,ld),0.);col*=uAmbient+diff*uLightIntensity;
+  vec3 H=normalize(ld+vViewDir);col+=pow(max(dot(N,H),0.),32.)*uSpecular;
+  col+=pow(1.-max(dot(N,vViewDir),0.),3.)*uFresnel*.5;
+  col*=uBrightness;col=(col-.5)*uContrast+.5;float gray=dot(col,vec3(.299,.587,.114));col=mix(vec3(gray),col,uSaturation);
+  gl_FragColor=vec4(clamp(col,0.,1.),1.);}`;
+
+const mU={
+  uTime:{value:0},uSeed:{value:0},uNoiseScale:{value:1.2},uNoiseIntensity:{value:.7},
+  uUndulationX:{value:1},uUndulationY:{value:1},uComplexity:{value:3},
+  uShaderTwist:{value:.3},uTwistFreq:{value:1},uWarpX:{value:.2},uWarpY:{value:.2},
+  uDisplacement:{value:.15},uBrightness:{value:1},uContrast:{value:1},
+  uSaturation:{value:1},uGlow:{value:.15},uLightIntensity:{value:.35},
+  uAmbient:{value:.7},uFresnel:{value:.3},uSpecular:{value:.2},
+  uColors:{value:[]},uColorCount:{value:5}
+};
+for(let i=0;i<8;i++)mU.uColors.value.push(new THREE.Color());
+const material=new THREE.ShaderMaterial({uniforms:mU,vertexShader:vertShader,fragmentShader:fragShader,side:THREE.DoubleSide});
+
+let ribbonMesh=null;
+function getCurvePoint(t,shape,rb){
+  const s=rb.curveScale,f1=rb.freq1,f2=rb.freq2;
+  switch(shape){
+    case'wave':return new THREE.Vector3((t-.5)*s*3,Math.sin(t*Math.PI*f1)*s*.45+Math.sin(t*Math.PI*f2*1.7)*s*.15,Math.cos(t*Math.PI*f2)*s*.35);
+    case'helix':{const a=t*Math.PI*2*f1;return new THREE.Vector3(Math.cos(a)*s*.5,(t-.5)*s*2,Math.sin(a)*s*.5);}
+    case'trefoil':{const a=t*Math.PI*2;return new THREE.Vector3((Math.sin(a)+2*Math.sin(2*a))*s*.3,(Math.cos(a)-2*Math.cos(2*a))*s*.3,-Math.sin(3*a)*s*.35);}
+    case'figure8':{const a=t*Math.PI*2;const r=s*.6;return new THREE.Vector3(r*Math.sin(a),r*Math.sin(a)*Math.cos(a),Math.sin(t*Math.PI*f1*2)*s*.3);}
+    case'spiral':{const a=t*Math.PI*2*f1;const r=(.2+t*.8)*s*.5;return new THREE.Vector3(Math.cos(a)*r,Math.sin(a)*r,(t-.5)*s*1.5);}
+    case'mobius':{const a=t*Math.PI*2;const r=s*.6;return new THREE.Vector3((r+.1*Math.cos(a/2))*Math.cos(a),(r+.1*Math.cos(a/2))*Math.sin(a),.3*Math.sin(a/2)*s);}
+  }return new THREE.Vector3();
+}
+function buildRibbon(){
+  const seg=parseInt(ribbon.segments),w=parseFloat(ribbon.ribbonWidth),tw=parseFloat(ribbon.ribbonTwist),sh=ribbon.shape;
+  const pts=[];for(let i=0;i<=seg;i++)pts.push(getCurvePoint(i/seg,sh,ribbon));
+  const tangents=[];for(let i=0;i<pts.length;i++){const t=new THREE.Vector3();if(i===0)t.subVectors(pts[1],pts[0]);else if(i===pts.length-1)t.subVectors(pts[i],pts[i-1]);else t.subVectors(pts[i+1],pts[i-1]);t.normalize();tangents.push(t);}
+  let up=Math.abs(tangents[0].y)<.99?new THREE.Vector3(0,1,0):new THREE.Vector3(1,0,0);
+  let normal=new THREE.Vector3().crossVectors(tangents[0],up).normalize();
+  let binormal=new THREE.Vector3().crossVectors(tangents[0],normal).normalize();
+  const frames=[{n:normal.clone(),b:binormal.clone()}];
+  for(let i=1;i<pts.length;i++){const axis=new THREE.Vector3().crossVectors(tangents[i-1],tangents[i]);if(axis.length()>1e-6){axis.normalize();const angle=Math.acos(Math.max(-1,Math.min(1,tangents[i-1].dot(tangents[i]))));const q=new THREE.Quaternion().setFromAxisAngle(axis,angle);normal=normal.clone().applyQuaternion(q).normalize();binormal=new THREE.Vector3().crossVectors(tangents[i],normal).normalize();}frames.push({n:normal.clone(),b:binormal.clone()});}
+  const positions=[],normals=[],uvs=[],indices=[];const hw=w/2;
+  for(let i=0;i<=seg;i++){const t=i/seg,twA=t*tw*Math.PI*2,ca=Math.cos(twA),sa=Math.sin(twA);const fr=frames[i];const tb=fr.b.clone().multiplyScalar(ca).add(fr.n.clone().multiplyScalar(sa));const tn=fr.b.clone().multiplyScalar(-sa).add(fr.n.clone().multiplyScalar(ca));const p=pts[i];const l=p.clone().add(tb.clone().multiplyScalar(-hw)),r=p.clone().add(tb.clone().multiplyScalar(hw));positions.push(l.x,l.y,l.z,r.x,r.y,r.z);normals.push(tn.x,tn.y,tn.z,tn.x,tn.y,tn.z);uvs.push(0,t,1,t);}
+  for(let i=0;i<seg;i++){const a=i*2,b=i*2+1,c=(i+1)*2,d=(i+1)*2+1;indices.push(a,b,c,b,d,c);}
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+  geo.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));
+  geo.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
+  geo.setIndex(indices);return geo;
+}
+function rebuildMesh(){if(ribbonMesh){scene.remove(ribbonMesh);ribbonMesh.geometry.dispose();}ribbonMesh=new THREE.Mesh(buildRibbon(),material);scene.add(ribbonMesh);needsRebuild=false;}
+
+const startTime=performance.now()/1000;
+function animate(now){
+  requestAnimationFrame(animate);
+  if(needsRebuild)rebuildMesh();
+  const elapsed=now/1000-startTime;
+  const t=animating?elapsed*params.speed+parseFloat(params.timeOffset):parseFloat(params.timeOffset);
+  mU.uTime.value=t;
+  mU.uSeed.value=+params.seed;mU.uNoiseScale.value=+params.noiseScale;mU.uNoiseIntensity.value=+params.noiseIntensity;
+  mU.uUndulationX.value=+params.undulationX;mU.uUndulationY.value=+params.undulationY;mU.uComplexity.value=+params.complexity;
+  mU.uShaderTwist.value=+params.shaderTwist;mU.uTwistFreq.value=+params.twistFreq;
+  mU.uWarpX.value=+params.warpX;mU.uWarpY.value=+params.warpY;mU.uDisplacement.value=+params.displacement;
+  mU.uBrightness.value=+params.brightness;mU.uContrast.value=+params.contrast;mU.uSaturation.value=+params.saturation;
+  mU.uGlow.value=+params.glow;mU.uLightIntensity.value=+params.lightIntensity;mU.uAmbient.value=+params.ambient;
+  mU.uFresnel.value=+params.fresnel;mU.uSpecular.value=+params.specular;mU.uColorCount.value=colors.length;
+  for(let i=0;i<8;i++){if(i<colors.length)mU.uColors.value[i].set(colors[i]);else mU.uColors.value[i].set('#000');}
+
+  if(autoRotate&&!isDragging)orbitTheta+=parseFloat(params.autoRotateSpeed)*.005;
+  updateCamera();
+
+  const needsPost=dofEnabled||+params.edgeBlur>0.01;
+  if(needsPost){
+    renderer.setRenderTarget(renderTarget);renderer.setClearColor(0xffffff,1);renderer.clear();renderer.render(scene,camera);
+    renderer.setRenderTarget(null);
+    dofU.tColor.value=renderTarget.texture;dofU.tDepth.value=renderTarget.depthTexture;
+    dofU.uFocusDist.value=+params.focusDist;dofU.uAperture.value=+params.aperture;
+    dofU.uMaxBlur.value=+params.maxBlur;dofU.uQuality.value=+params.dofQuality;
+    dofU.uNearBias.value=+params.nearBias;dofU.uFarBias.value=+params.farBias;
+    dofU.uBokehBright.value=+params.bokehBright;
+    dofU.uEdgeBlur.value=+params.edgeBlur;dofU.uEdgeRadius.value=+params.edgeRadius;
+    dofU.uEdgeSoftness.value=+params.edgeSoftness;dofU.uTiltX.value=+params.tiltX;
+    dofU.uTiltY.value=+params.tiltY;dofU.uEdgeShape.value=+params.edgeShape;
+    dofU.uNear.value=camera.near;dofU.uFar.value=camera.far;
+    dofU.uDofOn.value=dofEnabled?1:0;dofU.uDebug.value=debugFocus?1:0;
+    renderer.render(postScene,postCamera);
+  } else {
+    renderer.setRenderTarget(null);renderer.render(scene,camera);
+  }
+}
+rebuildMesh();requestAnimationFrame(animate);
+
+// === UI ===
+function setParam(n,v){params[n]=v;const el=document.getElementById('v_'+n);if(el)el.textContent=(n==='dofQuality'||n==='segments'?parseInt(v):parseFloat(v).toFixed(2));}
+function setRibbon(n,v){ribbon[n]=v;const el=document.getElementById('v_'+n);if(el)el.textContent=(n==='segments'?parseInt(v):parseFloat(v).toFixed(2));needsRebuild=true;}
+function toggleSection(h){h.classList.toggle('collapsed');h.nextElementSibling.classList.toggle('hidden');}
+function toggleFlag(btn,flag){
+  if(flag==='animating'){animating=!animating;}
+  if(flag==='autoRotate'){autoRotate=!autoRotate;}
+  if(flag==='dofEnabled'){dofEnabled=!dofEnabled;}
+  if(flag==='debugFocus'){debugFocus=!debugFocus;}
+  btn.classList.toggle('active');
+}
+function renderColors(){const w=document.getElementById('colorControls');w.innerHTML='';colors.forEach((c,i)=>{const r=document.createElement('div');r.className='color-row';r.innerHTML=`<input type="color" value="${c}" oninput="colors[${i}]=this.value"><label>Color ${i+1}</label>${colors.length>2?`<button class="remove-color" onclick="removeColor(${i})">&times;</button>`:''}`;w.appendChild(r);});}
+function addColor(){if(colors.length>=8)return;colors.push(hslToHex(Math.random()*360,80,55));renderColors();}
+function removeColor(i){if(colors.length<=2)return;colors.splice(i,1);renderColors();}
+function hslToHex(h,s,l){s/=100;l/=100;const a=s*Math.min(l,1-l);const f=n=>{const k=(n+h/30)%12;return l-a*Math.max(Math.min(k-3,9-k,1),-1);};return'#'+[f(0),f(8),f(4)].map(x=>Math.round(x*255).toString(16).padStart(2,'0')).join('');}
+const shapes=[{id:'wave',name:'Wave'},{id:'helix',name:'Helix'},{id:'trefoil',name:'Trefoil'},{id:'figure8',name:'Figure 8'},{id:'spiral',name:'Spiral'},{id:'mobius',name:'Mobius'}];
+function renderShapes(){const g=document.getElementById('shapeGrid');g.innerHTML='';shapes.forEach(s=>{const b=document.createElement('button');b.className='shape-btn'+(ribbon.shape===s.id?' active':'');b.textContent=s.name;b.onclick=()=>{ribbon.shape=s.id;needsRebuild=true;renderShapes();};g.appendChild(b);});}
+const presets=[
+  {name:'Stripe',colors:['#ff6b35','#f7c948','#e0479e','#8b5cf6','#06b6d4'],p:{noiseScale:1.2,noiseIntensity:.7,shaderTwist:.3,warpX:.2,warpY:.2,complexity:3,seed:0}},
+  {name:'Ocean',colors:['#0077b6','#00b4d8','#90e0ef','#023e8a','#48cae4'],p:{noiseScale:1.5,noiseIntensity:.5,shaderTwist:.15,warpX:.3,warpY:.1,complexity:4,seed:12}},
+  {name:'Sunset',colors:['#ff4500','#ff6347','#ff8c00','#ffd700','#ff1493'],p:{noiseScale:.8,noiseIntensity:.7,shaderTwist:.5,warpX:.15,warpY:.25,complexity:3,seed:25}},
+  {name:'Aurora',colors:['#00ff87','#60efff','#0061ff','#ff00e5','#00c9a7'],p:{noiseScale:1.3,noiseIntensity:.8,shaderTwist:.4,warpX:.35,warpY:.35,complexity:5,seed:42}},
+  {name:'Ember',colors:['#ff0000','#ff4400','#ff8800','#440000','#ffcc00'],p:{noiseScale:.7,noiseIntensity:.9,shaderTwist:.6,warpX:.1,warpY:.4,complexity:3,seed:7}},
+  {name:'Neon',colors:['#00ffff','#ff00ff','#ffff00','#00ff00','#ff0088'],p:{noiseScale:1.2,noiseIntensity:.5,shaderTwist:.2,warpX:.25,warpY:.25,complexity:4,seed:55}},
+  {name:'Pastel',colors:['#ffc8dd','#bde0fe','#a2d2ff','#cdb4db','#caffbf'],p:{noiseScale:.9,noiseIntensity:.4,shaderTwist:.1,warpX:.15,warpY:.15,complexity:2,seed:33}},
+  {name:'Void',colors:['#2d00f7','#6a00f4','#8900f2','#a100f2','#b100e8'],p:{noiseScale:1.8,noiseIntensity:.7,shaderTwist:.7,warpX:.4,warpY:.2,complexity:5,seed:17}},
+  {name:'Earth',colors:['#606c38','#283618','#dda15e','#bc6c25','#fefae0'],p:{noiseScale:1.1,noiseIntensity:.5,shaderTwist:.25,warpX:.2,warpY:.3,complexity:3,seed:61}},
+];
+function renderPresets(){const g=document.getElementById('presetGrid');g.innerHTML='';presets.forEach((pr)=>{const b=document.createElement('button');b.className='preset-btn';b.title=pr.name;b.style.background=`linear-gradient(135deg,${pr.colors.map((c,j)=>`${c} ${(j/(pr.colors.length-1)*100).toFixed(0)}%`).join(',')})`;b.onclick=()=>{colors=[...pr.colors];for(const[k,v]of Object.entries(pr.p))params[k]=v;syncSliders();renderColors();};g.appendChild(b);});}
+function syncSliders(){document.querySelectorAll('#sidebar input[type="range"]').forEach(s=>{const h=s.getAttribute('oninput');if(!h)return;let m=h.match(/setParam\('(\w+)'/);if(m&&params[m[1]]!==undefined){s.value=params[m[1]];const el=document.getElementById('v_'+m[1]);if(el)el.textContent=(m[1]==='dofQuality'?parseInt(params[m[1]]):parseFloat(params[m[1]]).toFixed(2));}m=h.match(/setRibbon\('(\w+)'/);if(m&&ribbon[m[1]]!==undefined){s.value=ribbon[m[1]];const el=document.getElementById('v_'+m[1]);if(el)el.textContent=(m[1]==='segments'?parseInt(ribbon[m[1]]):parseFloat(ribbon[m[1]]).toFixed(2));}});}
+function randomize(){
+  params.seed=(Math.random()*100).toFixed(1);params.noiseScale=(.3+Math.random()*3).toFixed(2);params.noiseIntensity=(.2+Math.random()*1.2).toFixed(2);
+  params.shaderTwist=(Math.random()*2).toFixed(2);params.twistFreq=(.2+Math.random()*3).toFixed(2);
+  params.warpX=(Math.random()*1.5).toFixed(2);params.warpY=(Math.random()*1.5).toFixed(2);
+  params.displacement=(Math.random()*.6).toFixed(2);params.complexity=Math.floor(2+Math.random()*5);
+  ribbon.shape=shapes[Math.floor(Math.random()*shapes.length)].id;
+  ribbon.ribbonTwist=(Math.random()*4).toFixed(1);ribbon.ribbonWidth=(1+Math.random()*5).toFixed(1);
+  colors=[];const cnt=3+Math.floor(Math.random()*4),bh=Math.random()*360;
+  for(let i=0;i<cnt;i++)colors.push(hslToHex((bh+i*(360/cnt)+(Math.random()-.5)*60)%360,60+Math.random()*40,40+Math.random()*30));
+  needsRebuild=true;syncSliders();renderColors();renderShapes();
+}
+function resetAll(){
+  Object.assign(params,{speed:.4,timeOffset:0,seed:0,noiseScale:1.2,noiseIntensity:.7,undulationX:1,undulationY:1,complexity:3,shaderTwist:.3,twistFreq:1,warpX:.2,warpY:.2,displacement:.15,brightness:1,contrast:1,saturation:1,glow:.15,lightIntensity:.35,ambient:.7,fresnel:.3,specular:.2,autoRotateSpeed:.3,focusDist:18,aperture:2.5,maxBlur:30,dofQuality:3,nearBias:1,farBias:1,bokehBright:.4,edgeBlur:0,edgeRadius:.6,edgeSoftness:.5,tiltX:0,tiltY:0,edgeShape:.5});
+  Object.assign(ribbon,{shape:'wave',ribbonWidth:3,ribbonTwist:1.5,curveScale:5,segments:200,freq1:2,freq2:3});
+  colors=['#ff6b35','#f7c948','#e0479e','#8b5cf6','#06b6d4'];
+  animating=true;autoRotate=true;dofEnabled=true;debugFocus=false;
+  document.getElementById('animToggle').classList.add('active');
+  document.getElementById('rotateToggle').classList.add('active');
+  document.getElementById('dofToggle').classList.add('active');
+  document.getElementById('debugToggle').classList.remove('active');
+  needsRebuild=true;syncSliders();renderColors();renderShapes();
+}
+function openExport(){document.getElementById('exportCode').value=generateExportCode();document.getElementById('exportModal').classList.add('open');}
+function closeExport(){document.getElementById('exportModal').classList.remove('open');}
+function copyExport(){const ta=document.getElementById('exportCode');ta.select();document.execCommand('copy');const b=document.querySelector('.export-footer .btn-primary');b.textContent='Copied!';setTimeout(()=>b.textContent='Copy to Clipboard',1500);}
+function generateExportCode(){
+return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>3D Gradient Ribbon</title>
+<style>*{margin:0;padding:0}body{overflow:hidden;background:#fff}canvas{width:100vw;height:100vh;display:block;cursor:grab}canvas:active{cursor:grabbing}</style>
+</head><body><canvas id="c"></canvas>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>
+<script>
+const canvas=document.getElementById('c');const R=new THREE.WebGLRenderer({canvas,antialias:true});
+R.setPixelRatio(Math.min(devicePixelRatio,2));R.setClearColor(0xffffff);
+const S=new THREE.Scene(),C=new THREE.PerspectiveCamera(45,1,.1,200);
+let oT=${orbitTheta.toFixed(4)},oP=${orbitPhi.toFixed(4)},oR=${orbitRadius.toFixed(2)};
+let pan=new THREE.Vector3(${panOffset.x.toFixed(3)},${panOffset.y.toFixed(3)},${panOffset.z.toFixed(3)});
+let drag=false,rDr=false,pm={x:0,y:0};
+function uc(){C.position.set(oR*Math.sin(oP)*Math.cos(oT)+pan.x,oR*Math.cos(oP)+pan.y,oR*Math.sin(oP)*Math.sin(oT)+pan.z);C.lookAt(pan);}
+const dT=new THREE.DepthTexture();dT.type=THREE.UnsignedIntType;
+const rt=new THREE.WebGLRenderTarget(1,1,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,depthTexture:dT});
+const pS2=new THREE.Scene(),pC2=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+function rsz(){const dpr=Math.min(devicePixelRatio,2);R.setSize(innerWidth,innerHeight);C.aspect=innerWidth/innerHeight;C.updateProjectionMatrix();rt.setSize(Math.floor(innerWidth*dpr),Math.floor(innerHeight*dpr));}
+addEventListener('resize',rsz);rsz();uc();
+canvas.addEventListener('mousedown',e=>{drag=true;rDr=e.button===2;pm={x:e.clientX,y:e.clientY};});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());addEventListener('mouseup',()=>drag=false);
+addEventListener('mousemove',e=>{if(!drag)return;const dx=e.clientX-pm.x,dy=e.clientY-pm.y;if(rDr){const r=new THREE.Vector3();C.getWorldDirection(r);const u=new THREE.Vector3(0,1,0);r.crossVectors(u,r).normalize();pan.add(r.multiplyScalar(-dx*.02));pan.y+=dy*.02;}else{oT-=dx*.005;oP-=dy*.005;oP=Math.max(.1,Math.min(Math.PI-.1,oP));}pm={x:e.clientX,y:e.clientY};uc();});
+canvas.addEventListener('wheel',e=>{e.preventDefault();oR+=e.deltaY*.02;oR=Math.max(3,Math.min(60,oR));uc();},{passive:false});
+const vs=\`${vertShader}\`;const fs=\`${fragShader}\`;
+const U={uTime:{value:0},uSeed:{value:${params.seed}},uNoiseScale:{value:${params.noiseScale}},uNoiseIntensity:{value:${params.noiseIntensity}},uUndulationX:{value:${params.undulationX}},uUndulationY:{value:${params.undulationY}},uComplexity:{value:${params.complexity}},uShaderTwist:{value:${params.shaderTwist}},uTwistFreq:{value:${params.twistFreq}},uWarpX:{value:${params.warpX}},uWarpY:{value:${params.warpY}},uDisplacement:{value:${params.displacement}},uBrightness:{value:${params.brightness}},uContrast:{value:${params.contrast}},uSaturation:{value:${params.saturation}},uGlow:{value:${params.glow}},uLightIntensity:{value:${params.lightIntensity}},uAmbient:{value:${params.ambient}},uFresnel:{value:${params.fresnel}},uSpecular:{value:${params.specular}},uColors:{value:[]},uColorCount:{value:${colors.length}}};
+const cols=${JSON.stringify(colors)};for(let i=0;i<8;i++)U.uColors.value.push(i<cols.length?new THREE.Color(cols[i]):new THREE.Color(0));
+const mat=new THREE.ShaderMaterial({uniforms:U,vertexShader:vs,fragmentShader:fs,side:THREE.DoubleSide});
+const dvs2=\`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}\`;
+const dfs2=\`${dofFS}\`;
+const dU2={tColor:{value:null},tDepth:{value:null},uFocusDist:{value:${params.focusDist}},uAperture:{value:${params.aperture}},uMaxBlur:{value:${params.maxBlur}},uQuality:{value:${params.dofQuality}},uNearBias:{value:${params.nearBias}},uFarBias:{value:${params.farBias}},uBokehBright:{value:${params.bokehBright}},uEdgeBlur:{value:${params.edgeBlur}},uEdgeRadius:{value:${params.edgeRadius}},uEdgeSoftness:{value:${params.edgeSoftness}},uTiltX:{value:${params.tiltX}},uTiltY:{value:${params.tiltY}},uEdgeShape:{value:${params.edgeShape}},uNear:{value:.1},uFar:{value:200},uRes:{value:new THREE.Vector2(Math.floor(innerWidth*Math.min(devicePixelRatio,2)),Math.floor(innerHeight*Math.min(devicePixelRatio,2)))},uDofOn:{value:${dofEnabled?1:0}},uDebug:{value:0}};
+pS2.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.ShaderMaterial({uniforms:dU2,vertexShader:dvs2,fragmentShader:dfs2,depthWrite:false})));
+function gcp(t){const s=${ribbon.curveScale},f1=${ribbon.freq1},f2=${ribbon.freq2};${ribbon.shape==='wave'?'return new THREE.Vector3((t-.5)*s*3,Math.sin(t*Math.PI*f1)*s*.45+Math.sin(t*Math.PI*f2*1.7)*s*.15,Math.cos(t*Math.PI*f2)*s*.35);':ribbon.shape==='helix'?'const a=t*Math.PI*2*f1;return new THREE.Vector3(Math.cos(a)*s*.5,(t-.5)*s*2,Math.sin(a)*s*.5);':ribbon.shape==='trefoil'?'const a=t*Math.PI*2;return new THREE.Vector3((Math.sin(a)+2*Math.sin(2*a))*s*.3,(Math.cos(a)-2*Math.cos(2*a))*s*.3,-Math.sin(3*a)*s*.35);':ribbon.shape==='figure8'?'const a=t*Math.PI*2;const r=s*.6;return new THREE.Vector3(r*Math.sin(a),r*Math.sin(a)*Math.cos(a),Math.sin(t*Math.PI*f1*2)*s*.3);':ribbon.shape==='spiral'?'const a=t*Math.PI*2*f1;const r=(.2+t*.8)*s*.5;return new THREE.Vector3(Math.cos(a)*r,Math.sin(a)*r,(t-.5)*s*1.5);':'const a=t*Math.PI*2;const r=s*.6;return new THREE.Vector3((r+.1*Math.cos(a/2))*Math.cos(a),(r+.1*Math.cos(a/2))*Math.sin(a),.3*Math.sin(a/2)*s);'}}
+const seg=${ribbon.segments},w=${ribbon.ribbonWidth},tw=${ribbon.ribbonTwist};const pts=[];for(let i=0;i<=seg;i++)pts.push(gcp(i/seg));
+const tns=[];for(let i=0;i<pts.length;i++){const t=new THREE.Vector3();if(i===0)t.subVectors(pts[1],pts[0]);else if(i===pts.length-1)t.subVectors(pts[i],pts[i-1]);else t.subVectors(pts[i+1],pts[i-1]);t.normalize();tns.push(t);}
+let up=Math.abs(tns[0].y)<.99?new THREE.Vector3(0,1,0):new THREE.Vector3(1,0,0);let nm=new THREE.Vector3().crossVectors(tns[0],up).normalize(),bn=new THREE.Vector3().crossVectors(tns[0],nm).normalize();const fr=[{n:nm.clone(),b:bn.clone()}];
+for(let i=1;i<pts.length;i++){const ax=new THREE.Vector3().crossVectors(tns[i-1],tns[i]);if(ax.length()>1e-6){ax.normalize();const ang=Math.acos(Math.max(-1,Math.min(1,tns[i-1].dot(tns[i]))));const q=new THREE.Quaternion().setFromAxisAngle(ax,ang);nm=nm.clone().applyQuaternion(q).normalize();bn=new THREE.Vector3().crossVectors(tns[i],nm).normalize();}fr.push({n:nm.clone(),b:bn.clone()});}
+const pos=[],nrm=[],uvs=[],idx=[];const hw=w/2;
+for(let i=0;i<=seg;i++){const t=i/seg,ta=t*tw*Math.PI*2,ca=Math.cos(ta),sa=Math.sin(ta);const f=fr[i];const tb=f.b.clone().multiplyScalar(ca).add(f.n.clone().multiplyScalar(sa));const tn=f.b.clone().multiplyScalar(-sa).add(f.n.clone().multiplyScalar(ca));const p=pts[i];const l=p.clone().add(tb.clone().multiplyScalar(-hw)),r=p.clone().add(tb.clone().multiplyScalar(hw));pos.push(l.x,l.y,l.z,r.x,r.y,r.z);nrm.push(tn.x,tn.y,tn.z,tn.x,tn.y,tn.z);uvs.push(0,t,1,t);}
+for(let i=0;i<seg;i++){const a=i*2,b=i*2+1,c=(i+1)*2,d=(i+1)*2+1;idx.push(a,b,c,b,d,c);}
+const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('normal',new THREE.Float32BufferAttribute(nrm,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));geo.setIndex(idx);S.add(new THREE.Mesh(geo,mat));
+rsz();uc();const st=performance.now()/1000;
+function anim(now){requestAnimationFrame(anim);U.uTime.value=(now/1000-st)*${params.speed}+${params.timeOffset};oT+=${params.autoRotateSpeed}*.005;uc();
+R.setRenderTarget(rt);R.setClearColor(0xffffff);R.clear();R.render(S,C);R.setRenderTarget(null);
+dU2.tColor.value=rt.texture;dU2.tDepth.value=rt.depthTexture;dU2.uNear.value=C.near;dU2.uFar.value=C.far;R.render(pS2,pC2);}
+requestAnimationFrame(anim);
+<\/script></body></html>`;
+}
+renderColors();renderPresets();renderShapes();
+</script>
+</body>
+</html>
